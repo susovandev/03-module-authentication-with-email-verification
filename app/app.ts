@@ -22,4 +22,8 @@ app.get('/', (_req: Request, res: Response) => {
 	});
 });
 
+// 404 Middleware
+import routeNotFoundHandler from './middlewares/404.middleware';
+app.use(routeNotFoundHandler);
+
 export default app;
