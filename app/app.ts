@@ -5,6 +5,10 @@ import { StatusCodes } from 'http-status-codes';
 // Initialize express application
 const app: Application = express();
 
+// Morgan Middleware for logging
+import morganConfig from './config/morgan.config';
+app.use(morganConfig);
+
 // Body-parser Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
