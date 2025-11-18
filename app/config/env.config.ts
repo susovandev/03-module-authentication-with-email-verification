@@ -6,6 +6,9 @@ const _config = {
 		PORT: process.env.PORT ?? 4000,
 		NODE_ENV: process.env.NODE_ENV,
 	},
+	DB: {
+		URI: process.env.DATABASE_URI as string,
+	},
 };
 
 const envConfig = Object.freeze(_config);
