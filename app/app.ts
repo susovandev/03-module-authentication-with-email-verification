@@ -26,4 +26,7 @@ app.get('/', (_req: Request, res: Response) => {
 import routeNotFoundHandler from './middlewares/404.middleware';
 app.use(routeNotFoundHandler);
 
+// Error Middleware
+import globalErrorHandler from './middlewares/error.middleware';
+app.use(globalErrorHandler);
 export default app;
