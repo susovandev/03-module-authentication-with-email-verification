@@ -1,0 +1,13 @@
+# Ignore build artifacts
+build/
+dist/
+
+# Ignore node modules
+node_modules/
+
+#package.json
+package-lock.json
+package.json
+
+#logs
+logs/

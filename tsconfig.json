@@ -1,0 +1,12 @@
+{
+	"extends": "@tsconfig/node24/tsconfig.json",
+	"compilerOptions": {
+		"outDir": "./dist",
+		"rootDir": "./app",
+		"removeComments": true,
+		"forceConsistentCasingInFileNames": true,
+		"isolatedModules": true
+	},
+	"include": ["app/**/*"],
+	"exclude": ["node_modules", "app/**/*.spec.ts"]
+}
