@@ -85,7 +85,7 @@ export const registerUserMailTemplate = (name: string, otp: string): string => `
             <tr>
               <td>
                 <p style="font-size: 15px; color: #333333;">
-                  This OTP will expire in <strong>1 minutes</strong> for
+                  This OTP will expire in <strong>1.30 minutes</strong> for
                   security reasons.<br />
                   If you did not request this, please ignore this email.
                 </p>

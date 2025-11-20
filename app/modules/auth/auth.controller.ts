@@ -17,9 +17,29 @@ class AuthController {
 			// Send structured API response
 			return res
 				.status(StatusCodes.CREATED)
-				.json(new ApiResponse(StatusCodes.OK, 'Registration successful, OTP sent to your email'));
+				.json(
+					new ApiResponse(StatusCodes.CREATED, 'Registration successful, OTP sent to your email'),
+				);
 		} catch (error) {
 			Logger.warn('[AuthController] register user request failed', error);
+			next(error);
+		}
+	}
+	public async verifyOTPHandler(req: Request, res: Response, next: NextFunction) {
+		try {
+			Logger.info(
+				`[AuthController] verify OTP request received with info: ${JSON.stringify(req.body)}`,
+			);
+
+			// Delegate core logic to service layer
+			await authService.verifyOTP(req.body);
+
+			// Send structured API response
+			return res
+				.status(StatusCodes.OK)
+				.json(new ApiResponse(StatusCodes.OK, 'OTP verified successfully'));
+		} catch (error) {
+			Logger.warn('[AuthController] verify OTP request failed', error);
 			next(error);
 		}
 	}

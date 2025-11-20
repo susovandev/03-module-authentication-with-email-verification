@@ -7,8 +7,8 @@ export interface IUserDocument extends Document {
 	email: string;
 	password: string;
 	isEmailVerified: boolean;
-	otp: string;
-	otpExpiry: Date;
+	otp: string | undefined;
+	otpExpiry: Date | undefined;
 	role: IUserRole;
 	createdAt: Date;
 	updatedAt: Date;

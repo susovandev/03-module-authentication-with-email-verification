@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 const signOTP = (): { otp: string; otpExpiry: Date } => {
 	const otp = crypto.randomInt(100000, 999999).toString();
-	const otpExpiry = new Date(Date.now() + 1 * 60 * 1000); // 1 minute
+	const otpExpiry = new Date(Date.now() + 1.5 * 60 * 1000); // 1.30 minutes
 
 	return { otp, otpExpiry };
 };
