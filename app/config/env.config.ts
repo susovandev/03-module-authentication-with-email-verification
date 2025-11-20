@@ -9,6 +9,11 @@ const _config = {
 	DB: {
 		URI: process.env.DATABASE_URI as string,
 	},
+	MAIL: {
+		SERVICE: process.env.MAIL_SERVICE as string,
+		USER: process.env.MAIL_USERNAME as string,
+		PASSWORD: process.env.MAIL_PASSWORD as string,
+	},
 };
 
 const envConfig = Object.freeze(_config);

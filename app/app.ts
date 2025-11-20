@@ -22,6 +22,10 @@ app.get('/', (_req: Request, res: Response) => {
 	});
 });
 
+// Application Routes
+import appRouter from './router/app.routes';
+appRouter(app);
+
 // 404 Middleware
 import routeNotFoundHandler from './middlewares/404.middleware';
 app.use(routeNotFoundHandler);
