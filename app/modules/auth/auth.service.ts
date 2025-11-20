@@ -10,6 +10,7 @@ import {
 import signOTP from '../../utils/otp.utils';
 import sendEmail from '../../mail/sendEmail.utils';
 import { registerUserMailTemplate } from '../../mail/templates/auth/registerMail.template';
+import { resendOtpMailTemplate } from '../../mail/templates/auth/resendMail.template';
 
 class AuthService {
 	async register(registerUserDTO: IRegisterUserDTO) {
@@ -98,6 +99,46 @@ class AuthService {
 			return;
 		} catch (error) {
 			Logger.warn('[AuthService] register user request failed', error);
+			throw error;
+		}
+	}
+	async resendOTP({ email }: { email: string }) {
+		/**
+		 * Get email from request body
+		 * Check if user already exists
+		 * Check if user account already verified
+		 * Generate otp
+		 * Save it
+		 * Send New mail
+		 */
+		try {
+			Logger.info(`[AuthService] resend OTP request received with email: ${email}`);
+
+			// Check if user already exists
+			const user = await userModel.findOne({ email });
+			if (!user) {
+				throw new NotFoundException('Email not registered');
+			}
+
+			// Check if user is already verified
+			if (user.isEmailVerified) {
+				throw new ConflictException('Email already verified');
+			}
+
+			// Generate OTP
+			const { otp, otpExpiry } = signOTP();
+
+			// Update user
+			user.otp = otp;
+			user.otpExpiry = otpExpiry;
+			await user.save();
+
+			// Send OTP to user's email
+			const resendOtpHtmlTemplate = resendOtpMailTemplate(user.name, otp);
+			await sendEmail(email, 'Email verification OTP', resendOtpHtmlTemplate);
+			return;
+		} catch (error) {
+			Logger.warn('[AuthService] resend OTP request failed', error);
 			throw error;
 		}
 	}

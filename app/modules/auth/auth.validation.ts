@@ -10,3 +10,7 @@ export const verifyOTPValidationSchema = Joi.object({
 	email: Joi.string().email().required(),
 	otp: Joi.string().required(),
 });
+
+export const resendOTPValidationSchema = Joi.object({
+	email: Joi.string().email().required(),
+});

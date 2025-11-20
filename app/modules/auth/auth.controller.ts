@@ -43,6 +43,24 @@ class AuthController {
 			next(error);
 		}
 	}
+	public async resendOTPHandler(req: Request, res: Response, next: NextFunction) {
+		try {
+			Logger.info(
+				`[AuthController] resend OTP request received with info: ${JSON.stringify(req.body)}`,
+			);
+
+			// Delegate core logic to service layer
+			await authService.resendOTP(req.body);
+
+			// Send structured API response
+			return res
+				.status(StatusCodes.OK)
+				.json(new ApiResponse(StatusCodes.OK, 'OTP resent successfully'));
+		} catch (error) {
+			Logger.warn('[AuthController] resend OTP request failed', error);
+			next(error);
+		}
+	}
 }
 
 export default new AuthController();
