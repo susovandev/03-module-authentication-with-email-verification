@@ -11,9 +11,13 @@ const sendEmail = async (to: string, subject: string, htmlTemplate: string) => {
 			html: htmlTemplate,
 		});
 	} catch (error) {
-		Logger.error('Error sending email:', error);
+		Logger.error(`['Mail ERROR'] ${error}`);
 		throw error;
 	}
 };
 
-export default sendEmail;
+const sendMail = async (to: string, subject: string, htmlTemplate: string) => {
+	return sendEmail(to, subject, htmlTemplate);
+};
+
+export default sendMail;

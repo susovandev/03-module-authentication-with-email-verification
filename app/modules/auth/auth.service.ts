@@ -1,5 +1,4 @@
-import userModel from '../user/user.model';
-import Logger from '../../utils/logger.utils';
+import userModel, { IUserDocument } from '../user/user.model';
 import {
 	ILoginDTO,
 	IRegisterUserDTO,
@@ -15,38 +14,44 @@ import {
 	NotFoundException,
 } from '../../utils/apiErrors.utils';
 import signOTP from '../../utils/otp.utils';
-import sendEmail from '../../mail/sendEmail.utils';
 import { registerUserMailTemplate } from '../../mail/templates/auth/registerMail.template';
 import { resendOtpMailTemplate } from '../../mail/templates/auth/resendMail.template';
 import signAccessTokenAndRefreshToken from '../../utils/token.utils';
 import envConfig from '../../config/env.config';
 import { resetPasswordMailTemplate } from '../../mail/templates/auth/resetPassword.template';
 import getResetPasswordToken from '../../utils/getResetPasswordToken.utils';
+import { logRequest } from '../../utils/logRequest.utils';
+import sendMail from '../../mail/sendEmail.utils';
 
 class AuthService {
+	private async findUserByEmail(email: string, selectedPassword = false) {
+		const user = await userModel.findOne({ email }).select(selectedPassword ? '+password' : '');
+		if (!user) {
+			throw new NotFoundException('Email not registered');
+		}
+		return user;
+	}
+	private async ensureUserVerified(user: IUserDocument) {
+		if (!user.isEmailVerified) {
+			throw new ConflictException('Email not verified yet.');
+		}
+	}
+	private async ensureUserNotVerified(user: IUserDocument) {
+		if (user.isEmailVerified) {
+			throw new ConflictException('Email already verified.');
+		}
+	}
 	async register(registerUserDTO: IRegisterUserDTO) {
-		/**
-		 * 1. Get name, email, password from request body
-		 * 2. Check if user already exists
-		 * 3. Generate OTP with expiry of 1 minute
-		 * 4. Create user with otp and otp expiry
-		 * 5. Create mail template
-		 * 6. Send mail
-		 */
-
 		const { name, email, password } = registerUserDTO;
-		Logger.info(`[AuthService] register user request received with email: ${email}`);
+		logRequest('AuthService', 'Register', email);
 
-		// Check if user already exists
 		const ifUserExists = await userModel.findOne({ email });
 		if (ifUserExists) {
 			throw new ConflictException('Email already registered');
 		}
 
-		// Generate OTP
 		const { otp, otpExpiry } = signOTP();
 
-		// Create user
 		const user = await userModel.create({
 			name,
 			email,
@@ -59,109 +64,54 @@ class AuthService {
 		}
 
 		// Send OTP to user's email
-		const otpHtmlTemplate = registerUserMailTemplate(name, otp);
-		await sendEmail(email, 'Email verification OTP', otpHtmlTemplate);
-		return;
+		await sendMail(email, 'Email verification OTP', registerUserMailTemplate(name, otp));
 	}
 	async verifyOTP(verifyOtpDTO: IVerifyOtpDTO) {
-		/**
-		 * Get email and otp from request body
-		 * Check if user already exists
-		 * Check if OTP is valid
-		 * Check if OTP is expired
-		 * Set isEmailVerified to true
-		 * Set otp and otpExpiry to null
-		 */
-
 		const { email, otp } = verifyOtpDTO;
-		Logger.info(`[AuthService] verify OTP request received with email: ${email}`);
+		logRequest('AuthService', 'Verify OTP', email);
 
-		// Check if user already exists
-		const user = await userModel.findOne({ email });
-		if (!user) {
-			throw new NotFoundException('Email not registered');
-		}
+		const user = await this.findUserByEmail(email);
 
-		// Check if user is already verified
-		if (user.isEmailVerified) {
-			throw new ConflictException('Email already verified');
-		}
+		this.ensureUserNotVerified(user);
 
-		// Check if OTP is valid
 		if (user.otp !== otp) {
 			throw new BadRequestException('Invalid OTP');
 		}
-
-		// Check if OTP is expired
 		if (user.otpExpiry && user.otpExpiry < new Date()) {
 			throw new BadRequestException('OTP expired');
 		}
 
 		// Update user
-		user.isEmailVerified = true;
-		user.otp = undefined;
-		user.otpExpiry = undefined;
-		await user.save();
-
-		return;
+		Object.assign(user, { isEmailVerified: true, otp: undefined, otpExpiry: undefined });
+		await user.save({ validateBeforeSave: false });
 	}
 	async resendOTP(resendOtpDTO: IResendOtpDTO) {
-		/**
-		 * Get email from request body
-		 * Check if user already exists
-		 * Check if user account already verified
-		 * Generate otp
-		 * Save it
-		 * Send New mail
-		 */
-
 		const { email } = resendOtpDTO;
-		Logger.info(`[AuthService] resend OTP request received with email: ${email}`);
+		logRequest('AuthService', 'Resend OTP', email);
 
 		// Check if user already exists
-		const user = await userModel.findOne({ email }).select('+password');
-		if (!user) {
-			throw new NotFoundException('Email not registered');
-		}
+		const user = await this.findUserByEmail(email);
 
 		// Check if user is already verified
-		if (user.isEmailVerified) {
-			throw new ConflictException('Email already verified');
-		}
+		this.ensureUserNotVerified(user);
 
 		// Generate OTP
 		const { otp, otpExpiry } = signOTP();
 
 		// Update user
-		user.otp = otp;
-		user.otpExpiry = otpExpiry;
-		await user.save();
+		Object.assign(user, { otp: otp, otpExpiry: otpExpiry });
+		await user.save({ validateBeforeSave: false });
 
 		// Send OTP to user's email
-		const resendOtpHtmlTemplate = resendOtpMailTemplate(user.name, otp);
-		await sendEmail(email, 'Email verification OTP', resendOtpHtmlTemplate);
-		return;
+		await sendMail(email, 'Email verification OTP', resendOtpMailTemplate(user.name, otp));
 	}
 	async login(loginDTO: ILoginDTO) {
-		/**
-		 * Get email and password from request body
-		 * Check if user already exists
-		 * Check user account already verified
-		 * Check user password correct
-		 * Generate accessToken and RefreshToken
-		 */
 		const { email, password } = loginDTO;
-		Logger.info(`[AuthService] Login user request received with email: ${email}`);
+		logRequest('AuthService', 'Login', email);
 
-		// Check if user already exists
-		const user = await userModel.findOne({ email }).select('+password');
-		if (!user) {
-			throw new NotFoundException('Email not registered');
-		}
-		// Check if user is already verified
-		if (!user.isEmailVerified) {
-			throw new ConflictException('Email not verified yet');
-		}
+		const user = await this.findUserByEmail(email, true);
+
+		this.ensureUserVerified(user);
 
 		// Check user password
 		const isPasswordCorrect = await user.comparePassword(password);
@@ -177,95 +127,68 @@ class AuthService {
 		});
 
 		user.refreshToken = refreshToken;
-		await user.save();
+		await user.save({ validateBeforeSave: false });
 
 		return { accessToken, refreshToken };
 	}
 	async forgetPassword(forgetPasswordDTO: IForgetPasswordDTO) {
-		/**
-		 * Get email from request body
-		 * Check if user already exists
-		 * Check user account already verified
-		 * Generate reset link
-		 * Send OTP to user's email
-		 */
 		const { email } = forgetPasswordDTO;
-		Logger.info(`[AuthService] Forget password request received with email: ${email}`);
+		logRequest('AuthService', 'Forget password', email);
 
 		// Check if user already exists
-		const user = await userModel.findOne({ email });
-		if (!user) {
-			throw new NotFoundException('Email not registered');
-		}
+		const user = await this.findUserByEmail(email);
 		// Check if user is already verified
-		if (!user.isEmailVerified) {
-			throw new ConflictException('Email not verified yet');
-		}
+		this.ensureUserVerified(user);
 
 		// Generate OTP
 		const { resetPasswordToken, resetPasswordExpiry } = getResetPasswordToken();
 
 		// Update user
-		user.resetPasswordToken = resetPasswordToken;
-		user.resetPasswordExpiry = resetPasswordExpiry;
-		await user.save();
+		Object.assign(user, {
+			resetPasswordToken: resetPasswordToken,
+			resetPasswordExpiry: resetPasswordExpiry,
+		});
+		await user.save({ validateBeforeSave: false });
 
 		// Generate reset link
 		const resetLink = `${envConfig.CLIENT.URL}/reset-password?resetPasswordToken=${resetPasswordToken}`;
 
 		// Send OTP to user's email
-		const resetPasswordHtmlTemplate = resetPasswordMailTemplate(user.name, resetLink);
-		await sendEmail(email, 'Reset Password', resetPasswordHtmlTemplate);
-
-		return;
+		await sendMail(email, 'Reset Password', resetPasswordMailTemplate(user.name, resetLink));
 	}
 	async resetPassword(resetPasswordDTO: IResetPasswordDTO) {
-		/**
-		 * Get email from request body
-		 * Check if user already exists
-		 * Check user account already verified
-		 * Generate reset link
-		 * Send OTP to user's email
-		 */
 		const { resetPasswordToken, newPassword, confirmPassword } = resetPasswordDTO;
-		Logger.info(
-			`[AuthService] Forget password request received with resetPasswordToken: ${resetPasswordToken}`,
-		);
+		logRequest('AuthService', 'Reset password', resetPasswordToken);
 
-		// Validation for password
 		if (newPassword !== confirmPassword) {
-			throw new BadRequestException('Password does not match');
+			throw new BadRequestException('Passwords do not match');
 		}
-
 		// If user exists
 		const user = await userModel.findOne({
 			resetPasswordToken,
 			resetPasswordExpiry: { $gt: Date.now() },
 		});
-
 		if (!user) {
 			throw new BadRequestException('Token is invalid or expired');
 		}
 
-		user.resetPasswordToken = undefined;
-		user.resetPasswordExpiry = undefined;
-
-		user.password = newPassword;
+		Object.assign(user, {
+			resetPasswordToken: undefined,
+			resetPasswordExpiry: undefined,
+			password: newPassword,
+		});
 		await user.save({ validateBeforeSave: false });
-
-		return;
 	}
 	async logout(id: string) {
+		logRequest('AuthService', 'Logout', id);
 		const resetRefreshToken = await userModel.findByIdAndUpdate(
 			id,
 			{ $unset: { refreshToken: 1 } },
 			{ new: true },
 		);
-
 		if (!resetRefreshToken) {
 			throw new NotFoundException('User not found');
 		}
-		return;
 	}
 }
 

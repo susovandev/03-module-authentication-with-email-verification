@@ -1,160 +1,100 @@
-import type { Request, Response, NextFunction } from 'express';
+import type { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
-import ApiResponse from '../../utils/apiResponse.utils';
-import Logger from '../../utils/logger.utils';
 import authService from './auth.service';
 import cookieConfigOptions from '../../config/cookie.config';
 import envConfig from '../../config/env.config';
 import ms from 'ms';
 import { IResetPasswordDTO } from './auth.types';
+import { sendResponse } from '../../utils/sendResponse.utils';
+import { logRequest } from '../../utils/logRequest.utils';
+import { asyncHandler } from '../../utils/asyncHandler.utils';
 
 class AuthController {
-	public async registerHandler(req: Request, res: Response, next: NextFunction) {
-		try {
-			Logger.info(
-				`[AuthController] register user request received with info: ${JSON.stringify(req.body)}`,
+	public registerHandler = asyncHandler(async (req: Request, res: Response) => {
+		logRequest('AuthController', 'Register', req.body);
+
+		// Delegate core logic to service layer
+		await authService.register(req.body);
+
+		return sendResponse(
+			res,
+			StatusCodes.CREATED,
+			'Registration successful, OTP sent to your email',
+		);
+	});
+
+	public verifyOTPHandler = asyncHandler(async (req: Request, res: Response) => {
+		logRequest('AuthController', 'Verify OTP', req.body);
+
+		// Delegate core logic to service layer
+		await authService.verifyOTP(req.body);
+
+		return sendResponse(res, StatusCodes.OK, 'OTP verified successfully.');
+	});
+
+	public resendOTPHandler = asyncHandler(async (req: Request, res: Response) => {
+		logRequest('AuthController', 'Resend OTP', req.body);
+
+		// Delegate core logic to service layer
+		await authService.resendOTP(req.body);
+
+		return sendResponse(res, StatusCodes.OK, 'OTP resent successfully.');
+	});
+
+	public loginHandler = asyncHandler(async (req: Request, res: Response) => {
+		logRequest('AuthController', 'Login', req.body);
+
+		// Delegate core logic to service layer
+		const { accessToken, refreshToken } = await authService.login(req.body);
+
+		res
+			.cookie(
+				'accessToken',
+				accessToken,
+				cookieConfigOptions(envConfig.JWT.ACCESS_TOKEN_MAX_AGE as ms.StringValue),
+			)
+			.cookie(
+				'refreshToken',
+				refreshToken,
+				cookieConfigOptions(envConfig.JWT.REFRESH_TOKEN_MAX_AGE as ms.StringValue),
 			);
+		return sendResponse(res, StatusCodes.OK, 'Logged in successfully.');
+	});
 
-			// Delegate core logic to service layer
-			await authService.register(req.body);
+	public forgetPasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+		logRequest('AuthController', 'Forget Password', req.body);
 
-			// Send structured API response
-			return res
-				.status(StatusCodes.CREATED)
-				.json(
-					new ApiResponse(StatusCodes.CREATED, 'Registration successful, OTP sent to your email'),
-				);
-		} catch (error) {
-			Logger.warn('[AuthController] register user request failed', error);
-			next(error);
-		}
-	}
-	public async verifyOTPHandler(req: Request, res: Response, next: NextFunction) {
-		try {
-			Logger.info(
-				`[AuthController] verify OTP request received with info: ${JSON.stringify(req.body)}`,
-			);
+		// Delegate core logic to service layer
+		await authService.forgetPassword(req.body);
 
-			// Delegate core logic to service layer
-			await authService.verifyOTP(req.body);
+		return sendResponse(res, StatusCodes.OK, 'Forget password email sent successfully.');
+	});
 
-			// Send structured API response
-			return res
-				.status(StatusCodes.OK)
-				.json(new ApiResponse(StatusCodes.OK, 'OTP verified successfully'));
-		} catch (error) {
-			Logger.warn('[AuthController] verify OTP request failed', error);
-			next(error);
-		}
-	}
-	public async resendOTPHandler(req: Request, res: Response, next: NextFunction) {
-		try {
-			Logger.info(
-				`[AuthController] resend OTP request received with info: ${JSON.stringify(req.body)}`,
-			);
+	public resetPasswordHandler = asyncHandler(async (req: Request, res: Response) => {
+		logRequest('AuthController', 'Reset Password', { ...req.body, ...req.query });
+		const request = {
+			resetPasswordToken: req.query.resetPasswordToken,
+			newPassword: req.body.newPassword,
+			confirmPassword: req.body.confirmPassword,
+		};
+		// Delegate core logic to service layer
+		await authService.resetPassword(request as IResetPasswordDTO);
 
-			// Delegate core logic to service layer
-			await authService.resendOTP(req.body);
+		return sendResponse(res, StatusCodes.OK, 'Password reset successfully.');
+	});
 
-			// Send structured API response
-			return res
-				.status(StatusCodes.OK)
-				.json(new ApiResponse(StatusCodes.OK, 'OTP resent successfully'));
-		} catch (error) {
-			Logger.warn('[AuthController] resend OTP request failed', error);
-			next(error);
-		}
-	}
-	public async loginHandler(req: Request, res: Response, next: NextFunction) {
-		try {
-			Logger.info(
-				`[AuthController] Login user request received with info: ${JSON.stringify(req.body)}`,
-			);
+	public logoutHandler = asyncHandler(async (req: Request, res: Response) => {
+		logRequest('AuthController', 'Logout', req.user?.sub);
+		const { sub } = req.user!;
 
-			// Delegate core logic to service layer
-			const { accessToken, refreshToken } = await authService.login(req.body);
+		// Delegate core logic to service layer
+		await authService.logout(sub);
 
-			// Send access token and refresh token in cookie and structured API response
-			res
-				.cookie(
-					'accessToken',
-					accessToken,
-					cookieConfigOptions(envConfig.JWT.ACCESS_TOKEN_MAX_AGE as ms.StringValue),
-				)
-				.cookie(
-					'refreshToken',
-					refreshToken,
-					cookieConfigOptions(envConfig.JWT.REFRESH_TOKEN_MAX_AGE as ms.StringValue),
-				)
-				.status(StatusCodes.OK)
-				.json(new ApiResponse(StatusCodes.OK, 'Logged in successfully.'));
-		} catch (error) {
-			Logger.warn('[AuthController] Login user request failed', error);
-			next(error);
-		}
-	}
-	public async forgetPasswordHandler(req: Request, res: Response, next: NextFunction) {
-		try {
-			Logger.info(
-				`[AuthController] Forget password request received with info: ${JSON.stringify(req.body)}`,
-			);
-
-			// Delegate core logic to service layer
-			await authService.forgetPassword(req.body);
-
-			// Send access token and refresh token in cookie and structured API response
-			res
-				.status(StatusCodes.OK)
-				.json(new ApiResponse(StatusCodes.OK, 'Forget password email sent successfully.'));
-		} catch (error) {
-			Logger.warn('[AuthController] Forget password request failed', error);
-			next(error);
-		}
-	}
-	public async resetPasswordHandler(req: Request, res: Response, next: NextFunction) {
-		try {
-			Logger.info(
-				`[AuthController] Reset password request received with info: ${JSON.stringify(req.body)}`,
-			);
-
-			// Delegate core logic to service layer
-			const request = {
-				resetPasswordToken: req.query.resetPasswordToken,
-				newPassword: req.body.newPassword,
-				confirmPassword: req.body.confirmPassword,
-			};
-			await authService.resetPassword(request as IResetPasswordDTO);
-
-			// Send access token and refresh token in cookie and structured API response
-			res
-				.status(StatusCodes.OK)
-				.json(new ApiResponse(StatusCodes.OK, 'Password reset successfully.'));
-		} catch (error) {
-			Logger.warn('[AuthController] Reset password request failed', error);
-			next(error);
-		}
-	}
-	async logoutHandler(req: Request, res: Response, next: NextFunction) {
-		try {
-			const { sub } = req.user!;
-
-			Logger.info(`[AuthController] Logout request for id: ${sub}`);
-
-			// Delegate core logic to service layer
-			await authService.logout(sub);
-
-			// Clear cookies and Send structured API response
-			res
-				.clearCookie('accessToken', cookieConfigOptions())
-				.clearCookie('refreshToken', cookieConfigOptions())
-				.status(StatusCodes.OK)
-				.json(new ApiResponse(StatusCodes.OK, 'Logout successfully'));
-			return;
-		} catch (error) {
-			Logger.warn('[AuthController] Logout request failed', error);
-			next(error);
-		}
-	}
+		res
+			.clearCookie('accessToken', cookieConfigOptions())
+			.clearCookie('refreshToken', cookieConfigOptions());
+		return sendResponse(res, StatusCodes.OK, 'Logout successfully.');
+	});
 }
 
 export default new AuthController();
