@@ -5,6 +5,7 @@ import {
 	loginValidationSchema,
 	registerValidationSchema,
 	resendEmailValidationSchema,
+	resetPasswordValidationSchema,
 	verifyOTPValidationSchema,
 } from './auth.validation';
 
@@ -23,5 +24,9 @@ router
 	.post(validateRequest(resendEmailValidationSchema), authController.resendOTPHandler);
 
 router.route('/login').post(validateRequest(loginValidationSchema), authController.loginHandler);
+
+router
+	.route('/forget-password')
+	.post(validateRequest(resetPasswordValidationSchema), authController.forgetPasswordHandler);
 
 export default router;

@@ -109,7 +109,7 @@ export const resetPasswordMailTemplate = (name: string, resetLink: string): stri
                     margin-top: 20px;
                   "
                 >
-                  This link will expire in <strong>15 minutes</strong> for security reasons.<br />
+                  This link will expire in <strong>3 minutes</strong> for security reasons.<br />
                   If you did NOT request a password reset, please ignore this email.
                 </p>
 

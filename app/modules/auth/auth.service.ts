@@ -1,6 +1,12 @@
 import userModel from '../user/user.model';
 import Logger from '../../utils/logger.utils';
-import { ILoginDTO, IRegisterUserDTO, IResendOtpDTO, IVerifyOtpDTO } from './auth.types';
+import {
+	ILoginDTO,
+	IRegisterUserDTO,
+	IResendOtpDTO,
+	IResetPasswordDTO,
+	IVerifyOtpDTO,
+} from './auth.types';
 import {
 	BadRequestException,
 	ConflictException,
@@ -12,6 +18,9 @@ import sendEmail from '../../mail/sendEmail.utils';
 import { registerUserMailTemplate } from '../../mail/templates/auth/registerMail.template';
 import { resendOtpMailTemplate } from '../../mail/templates/auth/resendMail.template';
 import signAccessTokenAndRefreshToken from '../../utils/token.utils';
+import envConfig from '../../config/env.config';
+import { resetPasswordMailTemplate } from '../../mail/templates/auth/resetPassword.template';
+import getResetPasswordToken from '../../utils/getResetPasswordToken.utils';
 
 class AuthService {
 	async register(registerUserDTO: IRegisterUserDTO) {
@@ -170,6 +179,44 @@ class AuthService {
 		await user.save();
 
 		return { accessToken, refreshToken };
+	}
+	async forgetPassword(resetPasswordDTO: IResetPasswordDTO) {
+		/**
+		 * Get email from request body
+		 * Check if user already exists
+		 * Check user account already verified
+		 * Generate reset link
+		 * Send OTP to user's email
+		 */
+		const { email } = resetPasswordDTO;
+		Logger.info(`[AuthService] Forget password request received with email: ${email}`);
+
+		// Check if user already exists
+		const user = await userModel.findOne({ email });
+		if (!user) {
+			throw new NotFoundException('Email not registered');
+		}
+		// Check if user is already verified
+		if (!user.isEmailVerified) {
+			throw new ConflictException('Email not verified yet');
+		}
+
+		// Generate OTP
+		const { resetPasswordToken, resetPasswordExpiry } = getResetPasswordToken();
+
+		// Update user
+		user.resetPasswordToken = resetPasswordToken;
+		user.resetPasswordExpiry = resetPasswordExpiry;
+		await user.save();
+
+		// Generate reset link
+		const resetLink = `${envConfig.CLIENT.URL}/reset-password?resetPasswordToken=${resetPasswordToken}`;
+
+		// Send OTP to user's email
+		const resetPasswordHtmlTemplate = resetPasswordMailTemplate(user.name, resetLink);
+		await sendEmail(email, 'Reset Password', resetPasswordHtmlTemplate);
+
+		return;
 	}
 }
 

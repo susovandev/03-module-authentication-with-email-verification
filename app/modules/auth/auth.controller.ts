@@ -92,6 +92,24 @@ class AuthController {
 			next(error);
 		}
 	}
+	public async forgetPasswordHandler(req: Request, res: Response, next: NextFunction) {
+		try {
+			Logger.info(
+				`[AuthController] Forget password request received with info: ${JSON.stringify(req.body)}`,
+			);
+
+			// Delegate core logic to service layer
+			await authService.forgetPassword(req.body);
+
+			// Send access token and refresh token in cookie and structured API response
+			res
+				.status(StatusCodes.OK)
+				.json(new ApiResponse(StatusCodes.OK, 'Forget password email sent successfully.'));
+		} catch (error) {
+			Logger.warn('[AuthController] Forget password request failed', error);
+			next(error);
+		}
+	}
 }
 
 export default new AuthController();

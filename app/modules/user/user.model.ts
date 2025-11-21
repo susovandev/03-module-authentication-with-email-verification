@@ -10,6 +10,8 @@ export interface IUserDocument extends Document {
 	otp: string | undefined;
 	otpExpiry: Date | undefined;
 	refreshToken: string | undefined;
+	resetPasswordToken: string | undefined;
+	resetPasswordExpiry: Date | undefined;
 	role: IUserRole;
 	createdAt: Date;
 	updatedAt: Date;
