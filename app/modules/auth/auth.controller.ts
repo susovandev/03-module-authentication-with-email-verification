@@ -3,6 +3,9 @@ import { StatusCodes } from 'http-status-codes';
 import ApiResponse from '../../utils/apiResponse.utils';
 import Logger from '../../utils/logger.utils';
 import authService from './auth.service';
+import cookieConfigOptions from '../../config/cookie.config';
+import envConfig from '../../config/env.config';
+import ms from 'ms';
 
 class AuthController {
 	public async registerHandler(req: Request, res: Response, next: NextFunction) {
@@ -58,6 +61,34 @@ class AuthController {
 				.json(new ApiResponse(StatusCodes.OK, 'OTP resent successfully'));
 		} catch (error) {
 			Logger.warn('[AuthController] resend OTP request failed', error);
+			next(error);
+		}
+	}
+	public async loginHandler(req: Request, res: Response, next: NextFunction) {
+		try {
+			Logger.info(
+				`[AuthController] Login user request received with info: ${JSON.stringify(req.body)}`,
+			);
+
+			// Delegate core logic to service layer
+			const { accessToken, refreshToken } = await authService.login(req.body);
+
+			// Send access token and refresh token in cookie and structured API response
+			res
+				.cookie(
+					'accessToken',
+					accessToken,
+					cookieConfigOptions(envConfig.JWT.ACCESS_TOKEN_MAX_AGE as ms.StringValue),
+				)
+				.cookie(
+					'refreshToken',
+					refreshToken,
+					cookieConfigOptions(envConfig.JWT.REFRESH_TOKEN_MAX_AGE as ms.StringValue),
+				)
+				.status(StatusCodes.OK)
+				.json(new ApiResponse(StatusCodes.OK, 'Logged in successfully.'));
+		} catch (error) {
+			Logger.warn('[AuthController] Login user request failed', error);
 			next(error);
 		}
 	}

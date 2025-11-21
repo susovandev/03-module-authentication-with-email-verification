@@ -1,9 +1,9 @@
 import * as Joi from 'joi';
 
-export const registerUserValidationSchema = Joi.object({
+export const registerValidationSchema = Joi.object({
 	name: Joi.string().min(3).max(50).required(),
 	email: Joi.string().email().required(),
-	password: Joi.string().min(6).max(50).required(),
+	password: Joi.string().min(6).max(20).required(),
 });
 
 export const verifyOTPValidationSchema = Joi.object({
@@ -11,6 +11,15 @@ export const verifyOTPValidationSchema = Joi.object({
 	otp: Joi.string().required(),
 });
 
-export const resendOTPValidationSchema = Joi.object({
+export const resendEmailValidationSchema = Joi.object({
+	email: Joi.string().email().required(),
+});
+
+export const loginValidationSchema = Joi.object({
+	email: Joi.string().email().required(),
+	password: Joi.string().min(6).max(20).required(),
+});
+
+export const resetPasswordValidationSchema = Joi.object({
 	email: Joi.string().email().required(),
 });

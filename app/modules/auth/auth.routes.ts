@@ -2,16 +2,17 @@ import { Router } from 'express';
 import authController from './auth.controller';
 import validateRequest from '../../middlewares/validation.middleware';
 import {
-	registerUserValidationSchema,
-	resendOTPValidationSchema,
+	loginValidationSchema,
+	registerValidationSchema,
+	resendEmailValidationSchema,
 	verifyOTPValidationSchema,
 } from './auth.validation';
 
-const router = Router();
+const router: Router = Router();
 
 router
 	.route('/register')
-	.post(validateRequest(registerUserValidationSchema), authController.registerHandler);
+	.post(validateRequest(registerValidationSchema), authController.registerHandler);
 
 router
 	.route('/verify-otp')
@@ -19,5 +20,8 @@ router
 
 router
 	.route('/resend-otp')
-	.post(validateRequest(resendOTPValidationSchema), authController.resendOTPHandler);
+	.post(validateRequest(resendEmailValidationSchema), authController.resendOTPHandler);
+
+router.route('/login').post(validateRequest(loginValidationSchema), authController.loginHandler);
+
 export default router;

@@ -9,9 +9,11 @@ export interface IUserDocument extends Document {
 	isEmailVerified: boolean;
 	otp: string | undefined;
 	otpExpiry: Date | undefined;
+	refreshToken: string | undefined;
 	role: IUserRole;
 	createdAt: Date;
 	updatedAt: Date;
+	comparePassword(incomingPassword: string): Promise<boolean>;
 }
 
 const userSchema = new Schema<IUserDocument>(
@@ -41,6 +43,15 @@ const userSchema = new Schema<IUserDocument>(
 		otpExpiry: {
 			type: Date,
 		},
+		resetPasswordToken: {
+			type: String,
+		},
+		resetPasswordExpiry: {
+			type: Date,
+		},
+		refreshToken: {
+			type: String,
+		},
 		role: {
 			type: String,
 			enum: ['user', 'admin'],
@@ -57,6 +68,11 @@ userSchema.pre('save', async function (next) {
 	this.password = await bcrypt.hash(this.password, 10);
 	next();
 });
+
+userSchema.methods.comparePassword = async function (incomingPassword: string): Promise<boolean> {
+	return await bcrypt.compare(incomingPassword, this.password);
+};
+
 const userModel = model<IUserDocument>('User', userSchema);
 
 export default userModel;
