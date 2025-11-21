@@ -7,9 +7,9 @@ import Logger from '../utils/logger.utils';
 
 const authMiddleware = (req: Request, _res: Response, next: NextFunction) => {
 	const accessToken =
-		req.cookies?.accessToken || req.headers.authorization?.split(' ')[1] || req.body.accessToken;
+		req.cookies?.accessToken || req.headers?.authorization?.split(' ')[1] || req.body?.accessToken;
 	if (!accessToken) {
-		throw new UnauthorizedException('Access token not found');
+		throw new UnauthorizedException(`Access token was invalid or missing.`);
 	}
 	try {
 		const decodedToken = jwt.verify(
