@@ -1,6 +1,7 @@
 import express from 'express';
 import type { Application, Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes';
+import cookieParser from 'cookie-parser';
 
 // Initialize express application
 const app: Application = express();
@@ -12,6 +13,7 @@ app.use(morganConfig);
 // Body-parser Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
 // Routes
 app.get('/', (_req: Request, res: Response) => {

@@ -9,6 +9,7 @@ import {
 	resetPasswordValidationSchema,
 	verifyOTPValidationSchema,
 } from './auth.validation';
+import authMiddleware from '../../middlewares/auth.middleware';
 
 const router: Router = Router();
 
@@ -33,5 +34,7 @@ router
 router
 	.route('/reset-password')
 	.post(validateRequest(resetPasswordValidationSchema), authController.resetPasswordHandler);
+
+router.route('/logout').post(authMiddleware, authController.logoutHandler);
 
 export default router;

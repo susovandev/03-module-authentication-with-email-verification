@@ -134,6 +134,27 @@ class AuthController {
 			next(error);
 		}
 	}
+	async logoutHandler(req: Request, res: Response, next: NextFunction) {
+		try {
+			const { sub } = req.user!;
+
+			Logger.info(`[AuthController] Logout request for id: ${sub}`);
+
+			// Delegate core logic to service layer
+			await authService.logout(sub);
+
+			// Clear cookies and Send structured API response
+			res
+				.clearCookie('accessToken', cookieConfigOptions())
+				.clearCookie('refreshToken', cookieConfigOptions())
+				.status(StatusCodes.OK)
+				.json(new ApiResponse(StatusCodes.OK, 'Logout successfully'));
+			return;
+		} catch (error) {
+			Logger.warn('[AuthController] Logout request failed', error);
+			next(error);
+		}
+	}
 }
 
 export default new AuthController();

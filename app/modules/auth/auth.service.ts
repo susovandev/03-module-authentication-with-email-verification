@@ -255,6 +255,18 @@ class AuthService {
 
 		return;
 	}
+	async logout(id: string) {
+		const resetRefreshToken = await userModel.findByIdAndUpdate(
+			id,
+			{ $unset: { refreshToken: 1 } },
+			{ new: true },
+		);
+
+		if (!resetRefreshToken) {
+			throw new NotFoundException('User not found');
+		}
+		return;
+	}
 }
 
 export default new AuthService();
