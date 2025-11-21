@@ -4,8 +4,9 @@ import {
 	ILoginDTO,
 	IRegisterUserDTO,
 	IResendOtpDTO,
-	IResetPasswordDTO,
+	IForgetPasswordDTO,
 	IVerifyOtpDTO,
+	IResetPasswordDTO,
 } from './auth.types';
 import {
 	BadRequestException,
@@ -180,7 +181,7 @@ class AuthService {
 
 		return { accessToken, refreshToken };
 	}
-	async forgetPassword(resetPasswordDTO: IResetPasswordDTO) {
+	async forgetPassword(forgetPasswordDTO: IForgetPasswordDTO) {
 		/**
 		 * Get email from request body
 		 * Check if user already exists
@@ -188,7 +189,7 @@ class AuthService {
 		 * Generate reset link
 		 * Send OTP to user's email
 		 */
-		const { email } = resetPasswordDTO;
+		const { email } = forgetPasswordDTO;
 		Logger.info(`[AuthService] Forget password request received with email: ${email}`);
 
 		// Check if user already exists
@@ -215,6 +216,42 @@ class AuthService {
 		// Send OTP to user's email
 		const resetPasswordHtmlTemplate = resetPasswordMailTemplate(user.name, resetLink);
 		await sendEmail(email, 'Reset Password', resetPasswordHtmlTemplate);
+
+		return;
+	}
+	async resetPassword(resetPasswordDTO: IResetPasswordDTO) {
+		/**
+		 * Get email from request body
+		 * Check if user already exists
+		 * Check user account already verified
+		 * Generate reset link
+		 * Send OTP to user's email
+		 */
+		const { resetPasswordToken, newPassword, confirmPassword } = resetPasswordDTO;
+		Logger.info(
+			`[AuthService] Forget password request received with resetPasswordToken: ${resetPasswordToken}`,
+		);
+
+		// Validation for password
+		if (newPassword !== confirmPassword) {
+			throw new BadRequestException('Password does not match');
+		}
+
+		// If user exists
+		const user = await userModel.findOne({
+			resetPasswordToken,
+			resetPasswordExpiry: { $gt: Date.now() },
+		});
+
+		if (!user) {
+			throw new BadRequestException('Token is invalid or expired');
+		}
+
+		user.resetPasswordToken = undefined;
+		user.resetPasswordExpiry = undefined;
+
+		user.password = newPassword;
+		await user.save({ validateBeforeSave: false });
 
 		return;
 	}

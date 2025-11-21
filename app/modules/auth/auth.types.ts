@@ -13,8 +13,14 @@ export interface IResendOtpDTO {
 	email: string;
 }
 
-export interface IResetPasswordDTO {
+export interface IForgetPasswordDTO {
 	email: string;
+}
+
+export interface IResetPasswordDTO {
+	resetPasswordToken: string;
+	newPassword: string;
+	confirmPassword: string;
 }
 export interface ILoginDTO {
 	email: string;

@@ -6,6 +6,7 @@ import authService from './auth.service';
 import cookieConfigOptions from '../../config/cookie.config';
 import envConfig from '../../config/env.config';
 import ms from 'ms';
+import { IResetPasswordDTO } from './auth.types';
 
 class AuthController {
 	public async registerHandler(req: Request, res: Response, next: NextFunction) {
@@ -107,6 +108,29 @@ class AuthController {
 				.json(new ApiResponse(StatusCodes.OK, 'Forget password email sent successfully.'));
 		} catch (error) {
 			Logger.warn('[AuthController] Forget password request failed', error);
+			next(error);
+		}
+	}
+	public async resetPasswordHandler(req: Request, res: Response, next: NextFunction) {
+		try {
+			Logger.info(
+				`[AuthController] Reset password request received with info: ${JSON.stringify(req.body)}`,
+			);
+
+			// Delegate core logic to service layer
+			const request = {
+				resetPasswordToken: req.query.resetPasswordToken,
+				newPassword: req.body.newPassword,
+				confirmPassword: req.body.confirmPassword,
+			};
+			await authService.resetPassword(request as IResetPasswordDTO);
+
+			// Send access token and refresh token in cookie and structured API response
+			res
+				.status(StatusCodes.OK)
+				.json(new ApiResponse(StatusCodes.OK, 'Password reset successfully.'));
+		} catch (error) {
+			Logger.warn('[AuthController] Reset password request failed', error);
 			next(error);
 		}
 	}

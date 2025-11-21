@@ -20,6 +20,11 @@ export const loginValidationSchema = Joi.object({
 	password: Joi.string().min(6).max(20).required(),
 });
 
-export const resetPasswordValidationSchema = Joi.object({
+export const forgetPasswordValidationSchema = Joi.object({
 	email: Joi.string().email().required(),
+});
+
+export const resetPasswordValidationSchema = Joi.object({
+	newPassword: Joi.string().min(6).max(20).required(),
+	confirmPassword: Joi.string().min(6).max(20).required(),
 });
